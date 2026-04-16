@@ -63,6 +63,13 @@ function normalizeClassPayload(input: string | { name: string; level?: string; h
 async function buildStudentPayload(data: any) {
   let className = data.class ? String(data.class).trim().toUpperCase() : null;
   const classId = data.classId || data.class_id || null;
+  const shouldSendFaceFields =
+    Object.prototype.hasOwnProperty.call(data, 'faceImage') ||
+    Object.prototype.hasOwnProperty.call(data, 'face_image') ||
+    Object.prototype.hasOwnProperty.call(data, 'faceDescriptor') ||
+    Object.prototype.hasOwnProperty.call(data, 'face_descriptor') ||
+    Object.prototype.hasOwnProperty.call(data, 'faceEnrolledAt') ||
+    Object.prototype.hasOwnProperty.call(data, 'face_enrolled_at');
 
   if (!className && classId) {
     const classResult = await apiCall(`/classes?select=name&id=eq.${encodeURIComponent(classId)}&limit=1`);
@@ -70,21 +77,29 @@ async function buildStudentPayload(data: any) {
     className = classRow?.name ? String(classRow.name).trim().toUpperCase() : null;
   }
 
-  return {
+  const payload: Record<string, any> = {
     name: String(data.name || '').trim(),
     nisn: data.nisn ? String(data.nisn).trim() : null,
     gender: data.gender ? String(data.gender).trim() : null,
     phone: data.phone ? String(data.phone).trim() : null,
     class: className,
     class_id: classId,
-    face_image: data.faceImage || data.face_image || null,
-    face_descriptor: Array.isArray(data.faceDescriptor)
+  };
+
+  if (shouldSendFaceFields) {
+    payload.face_image = data.faceImage || data.face_image || null;
+    payload.face_descriptor = Array.isArray(data.faceDescriptor)
       ? data.faceDescriptor
       : Array.isArray(data.face_descriptor)
         ? data.face_descriptor
-        : null,
-    face_enrolled_at: data.faceEnrolledAt || data.face_enrolled_at || ((data.faceImage || data.faceDescriptor || data.face_descriptor) ? new Date().toISOString() : null),
-  };
+        : null;
+    payload.face_enrolled_at =
+      data.faceEnrolledAt ||
+      data.face_enrolled_at ||
+      ((data.faceImage || data.faceDescriptor || data.face_descriptor) ? new Date().toISOString() : null);
+  }
+
+  return payload;
 }
 
 // Classes API
