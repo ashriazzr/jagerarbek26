@@ -17,7 +17,7 @@ import { seedAPI } from '../utils/api';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { safeDate, safeFormatDate } from '../utils/date';
+import { safeDate, safeFormatDate, formatDurationMinutes } from '../utils/date';
 
 export function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -281,7 +281,7 @@ export function Dashboard() {
                           {safeFormatDate(record.timestamp, "dd MMM, HH:mm", { locale: localeId })}
                         </span>
                         <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                          +{record.minutesLate} menit
+                          +{formatDurationMinutes(record.minutesLate)}
                         </span>
                       </div>
                     </div>

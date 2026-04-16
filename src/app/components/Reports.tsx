@@ -25,7 +25,7 @@ import {
   Line,
 } from 'recharts';
 import { toast } from 'sonner';
-import { safeDate, safeFormatDate } from '../utils/date';
+import { safeDate, safeFormatDate, formatDurationMinutes } from '../utils/date';
 
 export function Reports() {
   const [loading, setLoading] = useState(true);
@@ -223,8 +223,8 @@ export function Reports() {
           </div>
           <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
             <p className="text-xs text-purple-600 font-semibold">Rata-rata Keterlambatan</p>
-            <p className="text-4xl font-bold text-purple-900 mt-1">{avgDailyMinutes}</p>
-            <p className="text-xs text-purple-500 mt-1">menit</p>
+            <p className="text-4xl font-bold text-purple-900 mt-1">{formatDurationMinutes(avgDailyMinutes)}</p>
+            <p className="text-xs text-purple-500 mt-1">rata-rata</p>
           </div>
         </div>
 
@@ -253,7 +253,7 @@ export function Reports() {
                       <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{r.reason}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
-                          {r.minutesLate} mnt
+                          {formatDurationMinutes(r.minutesLate)}
                         </span>
                       </td>
                     </tr>

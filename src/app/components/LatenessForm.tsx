@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { safeDate, safeFormatDate } from '../utils/date';
+import { formatDurationMinutes } from '../utils/date';
 
 export function LatenessForm() {
   const [selectedClass, setSelectedClass] = useState('');
@@ -316,7 +317,7 @@ export function LatenessForm() {
                 <div className="mt-2 flex items-center gap-2">
                   <span className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 text-sm font-semibold rounded-full">
                     <Clock className="w-3.5 h-3.5 mr-1" />
-                    Terlambat {minutesLate} menit
+                    Terlambat {formatDurationMinutes(minutesLate)}
                   </span>
                   <span className="text-xs text-gray-400">(dari jam {schoolStartHour}:00 WIB)</span>
                 </div>
@@ -424,7 +425,7 @@ export function LatenessForm() {
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
-                        {record.minutesLate} mnt
+                        {formatDurationMinutes(record.minutesLate)}
                       </span>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">

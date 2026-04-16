@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { exportDailyReport, exportMonthlyReport, exportStudentReport } from '../utils/exportExcel';
 import { safeDate, safeFormatDate } from '../utils/date';
+import { formatDurationMinutes } from '../utils/date';
 
 type Tab = 'daily' | 'monthly' | 'student';
 
@@ -288,8 +289,8 @@ export function AccumulationReports() {
             </div>
             <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100">
               <p className="text-xs font-semibold text-purple-600">Rata-rata Terlambat</p>
-              <p className="text-4xl font-bold text-purple-900 mt-1">{avgMinutes}</p>
-              <p className="text-xs text-purple-500 mt-1">menit</p>
+              <p className="text-4xl font-bold text-purple-900 mt-1">{formatDurationMinutes(avgMinutes)}</p>
+              <p className="text-xs text-purple-500 mt-1">rata-rata</p>
             </div>
             <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
               <p className="text-xs font-semibold text-blue-600">Kelas Terbanyak</p>
@@ -356,7 +357,7 @@ export function AccumulationReports() {
                           <td className="px-5 py-4 text-sm text-gray-600 max-w-xs truncate">{r.reason}</td>
                           <td className="px-5 py-4 whitespace-nowrap">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800">
-                              <Clock className="w-3 h-3 mr-1" />{r.minutesLate} mnt
+                              <Clock className="w-3 h-3 mr-1" />{formatDurationMinutes(r.minutesLate)}
                             </span>
                           </td>
                         </tr>
@@ -549,7 +550,7 @@ export function AccumulationReports() {
                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Nama Siswa</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kelas</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Jml Terlambat</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Menit</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Durasi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -578,7 +579,7 @@ export function AccumulationReports() {
                         <td className="px-5 py-4 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-orange-400" />
-                            {s.totalMinutes} mnt
+                            {formatDurationMinutes(s.totalMinutes)}
                           </span>
                         </td>
                       </tr>
