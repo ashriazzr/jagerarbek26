@@ -91,6 +91,11 @@ export const classesAPI = {
       },
       body: JSON.stringify(normalizeClassPayload(input)),
     }),
+  update: (oldName: string, input: string | { name: string; level?: string; homeroom?: string }) =>
+    apiCall(`/classes?name=eq.${encodeURIComponent(oldName.trim().toUpperCase())}`, {
+      method: 'PATCH',
+      body: JSON.stringify(normalizeClassPayload(input)),
+    }),
   delete: (name: string) =>
     apiCall(`/classes?name=eq.${encodeURIComponent(name.trim().toUpperCase())}`, {
       method: 'DELETE',

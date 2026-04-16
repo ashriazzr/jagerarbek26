@@ -3,7 +3,7 @@ import {
   Users, Plus, Edit2, Trash2, X, ChevronDown, Loader2,
   Search, Upload, Download, BookOpen, GraduationCap,
 } from 'lucide-react';
-import { getStudents, addStudent, updateStudent, deleteStudent, getClasses, addClass, deleteClass } from '../utils/storage';
+import { getStudents, addStudent, updateStudent, deleteStudent, getClasses, addClass, updateClass, deleteClass } from '../utils/storage';
 import { Student } from '../types';
 import { toast } from 'sonner';
 
@@ -19,6 +19,7 @@ export function StudentManagement() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
 
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editingClassName, setEditingClassName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -54,16 +55,40 @@ export function StudentManagement() {
 
   // ─── CLASS MANAGEMENT ────────────────────────────────────────────────────────
 
+  const handleOpenClassModal = (className?: string) => {
+    if (className) {
+      setEditingClassName(className);
+      setNewClassName(className);
+    } else {
+      setEditingClassName('');
+      setNewClassName('');
+    }
+    setIsClassModalOpen(true);
+  };
+
+  const handleCloseClassModal = () => {
+    setIsClassModalOpen(false);
+    setEditingClassName('');
+    setNewClassName('');
+  };
+
   const handleAddClass = async () => {
     const name = newClassName.trim().toUpperCase();
     if (!name) { toast.error('Nama kelas tidak boleh kosong'); return; }
-    if (classes.includes(name)) { toast.error(`Kelas ${name} sudah ada`); return; }
+    if (classes.includes(name) && name !== editingClassName) { toast.error(`Kelas ${name} sudah ada`); return; }
     try {
       setSavingClass(true);
-      await addClass(name);
-      setClasses(prev => [...prev, name].sort());
+      if (editingClassName) {
+        await updateClass(editingClassName, name);
+        toast.success(`Kelas ${editingClassName} berhasil diubah menjadi ${name}`);
+      } else {
+        await addClass(name);
+        toast.success(`Kelas ${name} berhasil ditambahkan`);
+      }
+      await loadAll();
       setNewClassName('');
-      toast.success(`Kelas ${name} berhasil ditambahkan`);
+      setEditingClassName('');
+      setIsClassModalOpen(false);
     } catch (error) {
       console.error('Error adding class:', error);
       toast.error('Gagal menambah kelas');
@@ -299,6 +324,13 @@ export function StudentManagement() {
                   <span className="text-sm font-semibold text-indigo-800">{cls}</span>
                   <span className="text-xs text-indigo-400 font-medium">{count} siswa</span>
                   <button
+                    onClick={() => handleOpenClassModal(cls)}
+                    className="ml-1 text-indigo-300 hover:text-indigo-600 transition-colors"
+                    title={`Edit kelas ${cls}`}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     onClick={() => handleDeleteClass(cls)}
                     disabled={deletingClass === cls}
                     className="ml-1 text-indigo-300 hover:text-red-500 transition-colors disabled:opacity-50"
@@ -419,8 +451,8 @@ export function StudentManagement() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">Tambah Kelas Baru</h3>
-              <button onClick={() => { setIsClassModalOpen(false); setNewClassName(''); }}
+              <h3 className="text-lg font-bold text-gray-900">{editingClassName ? 'Edit Kelas' : 'Tambah Kelas Baru'}</h3>
+              <button onClick={handleCloseClassModal}
                 className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
@@ -434,7 +466,7 @@ export function StudentManagement() {
                   type="text"
                   value={newClassName}
                   onChange={e => setNewClassName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddClass()}
+                    onKeyDown={e => e.key === 'Enter' && handleAddClass()}
                   placeholder="Contoh: X-1, XI-IPA-2, XII-IPS-1"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
                   style={{ textTransform: 'uppercase' }}
@@ -444,7 +476,7 @@ export function StudentManagement() {
               </div>
               <div className="flex gap-3 pt-1">
                 <button
-                  onClick={() => { setIsClassModalOpen(false); setNewClassName(''); }}
+                  onClick={handleCloseClassModal}
                   className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
                 >
                   Batal
@@ -455,7 +487,7 @@ export function StudentManagement() {
                   className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:bg-indigo-300 flex items-center justify-center gap-2"
                 >
                   {savingClass ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  Tambah Kelas
+                  {editingClassName ? 'Simpan Perubahan' : 'Tambah Kelas'}
                 </button>
               </div>
             </div>

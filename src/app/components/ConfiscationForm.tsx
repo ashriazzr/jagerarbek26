@@ -9,7 +9,7 @@ import {
   getUniqueClasses,
 } from '../utils/storage';
 import { ConfiscationRecord, Student } from '../types';
-import { format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { safeDate, safeFormatDate } from '../utils/date';
@@ -19,7 +19,7 @@ export function ConfiscationForm() {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [item, setItem] = useState('');
   const [confiscationDate, setConfiscationDate] = useState('');
-  const [plannedPickupDate, setPlannedPickupDate] = useState('');
+  const [plannedPickupDate, setPlannedPickupDate] = useState(() => format(addDays(new Date(), 3), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
 
   const [classes, setClasses] = useState<string[]>([]);
@@ -49,6 +49,7 @@ export function ConfiscationForm() {
     loadInitialData();
     const now = new Date();
     setConfiscationDate(format(now, 'yyyy-MM-dd'));
+    setPlannedPickupDate(format(addDays(now, 3), 'yyyy-MM-dd'));
   }, []);
 
   useEffect(() => {
@@ -88,18 +89,7 @@ export function ConfiscationForm() {
     try {
       const records = await getConfiscationRecords();
       const sorted = [...records].sort(
-        (a, b) => {
-          try {
-            const dateA = new Date(`${a.confiscationDate || '1970-01-01'}T00:00:00`);
-            const dateB = new Date(`${b.confiscationDate || '1970-01-01'}T00:00:00`);
-            if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-              return 0;
-            }
-            return dateB.getTime() - dateA.getTime();
-          } catch {
-            return 0;
-          }
-        }
+        (a, b) => safeDate(b.confiscationDate).getTime() - safeDate(a.confiscationDate).getTime()
       );
       setConfiscationRecords(sorted);
     } catch (error) {
@@ -137,7 +127,7 @@ export function ConfiscationForm() {
 
       setItem('');
       setNotes('');
-      setPlannedPickupDate('');
+      setPlannedPickupDate(format(addDays(new Date(), 3), 'yyyy-MM-dd'));
       const now = new Date();
       setConfiscationDate(format(now, 'yyyy-MM-dd'));
 

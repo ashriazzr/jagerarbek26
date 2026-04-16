@@ -40,6 +40,25 @@ export const addClass = async (name: string): Promise<void> => {
   await classesAPI.create(name);
 };
 
+export const updateClass = async (oldName: string, newName: string): Promise<void> => {
+  const normalizedOldName = oldName.trim().toUpperCase();
+  const normalizedNewName = newName.trim().toUpperCase();
+
+  await classesAPI.update(normalizedOldName, normalizedNewName);
+
+  const students = await getStudents();
+  const affectedStudents = students.filter(student => student.class === normalizedOldName);
+
+  await Promise.all(
+    affectedStudents.map(student =>
+      updateStudent(student.id, {
+        ...student,
+        class: normalizedNewName,
+      })
+    )
+  );
+};
+
 export const deleteClass = async (name: string): Promise<void> => {
   await classesAPI.delete(name);
 };
