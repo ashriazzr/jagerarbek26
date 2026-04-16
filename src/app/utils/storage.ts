@@ -86,13 +86,33 @@ export const getStudents = async (): Promise<Student[]> => {
 };
 
 export const addStudent = async (student: Omit<Student, 'id'>): Promise<Student> => {
-  const result = await studentsAPI.create(student);
-  return mapStudentRecord(result.data);
+  try {
+    const result = await studentsAPI.create(student);
+    return mapStudentRecord(result.data);
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if ((student.faceImage || student.faceDescriptor) && /face_image|face_descriptor|face_enrolled_at|column .* does not exist/i.test(message)) {
+      const { faceImage, faceDescriptor, faceEnrolledAt, ...fallbackStudent } = student as any;
+      const result = await studentsAPI.create(fallbackStudent);
+      return mapStudentRecord(result.data);
+    }
+    throw error;
+  }
 };
 
 export const updateStudent = async (id: string, student: Student): Promise<Student> => {
-  const result = await studentsAPI.update(id, student);
-  return mapStudentRecord(result.data);
+  try {
+    const result = await studentsAPI.update(id, student);
+    return mapStudentRecord(result.data);
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if ((student.faceImage || student.faceDescriptor) && /face_image|face_descriptor|face_enrolled_at|column .* does not exist/i.test(message)) {
+      const { faceImage, faceDescriptor, faceEnrolledAt, ...fallbackStudent } = student as any;
+      const result = await studentsAPI.update(id, fallbackStudent);
+      return mapStudentRecord(result.data);
+    }
+    throw error;
+  }
 };
 
 export const deleteStudent = async (id: string): Promise<void> => {
