@@ -167,7 +167,17 @@ export const tardinessAPI = {
 
 // Confiscation API
 export const confiscationAPI = {
-  getAll: () => apiCall('/confiscation_records?select=id,student_id,student_name,student_class,item,item_image,confiscation_date,pickup_date,status,notes'),
+  getAll: async () => {
+    try {
+      return await apiCall('/confiscation_records?select=id,student_id,student_name,student_class,item,item_image,confiscation_date,pickup_date,status,notes');
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      if (/item_image|column .* does not exist/i.test(message)) {
+        return apiCall('/confiscation_records?select=id,student_id,student_name,student_class,item,confiscation_date,pickup_date,status,notes');
+      }
+      throw error;
+    }
+  },
   create: (data: any) =>
     apiCall('/confiscation_records', {
       method: 'POST',
