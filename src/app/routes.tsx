@@ -8,15 +8,6 @@ import { StudentManagement } from "./components/StudentManagement";
 import { GithubTutorial } from "./components/GithubTutorial";
 import { NotFound } from "./components/NotFound";
 
-// Get the base path for GitHub Pages
-const getBasename = () => {
-  // Check if running on GitHub Pages
-  if (window.location.hostname === 'ashriazzr.github.io') {
-    return '/jagerarbek26/';
-  }
-  return '/';
-};
-
 const routes = [
   {
     path: "/",
@@ -35,5 +26,5 @@ const routes = [
 ];
 
 export const router = createBrowserRouter(routes, {
-  basename: getBasename(),
+  basename: import.meta.env.BASE_URL,
 });
