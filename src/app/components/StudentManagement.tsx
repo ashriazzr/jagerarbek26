@@ -682,8 +682,8 @@ export function StudentManagement() {
 
       {/* ─── ADD/EDIT STUDENT MODAL ───────────────────────────────────────────── */}
       {isStudentModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 py-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <h3 className="text-xl font-bold text-gray-900">
                 {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
@@ -692,7 +692,7 @@ export function StudentManagement() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[calc(92vh-96px)]">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
               {/* Kelas select */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -771,7 +771,7 @@ export function StudentManagement() {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 flex flex-col justify-between gap-3 min-h-[180px] md:min-h-[240px]">
+                  <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 flex flex-col justify-between gap-3 min-h-[160px] md:min-h-[220px]">
                     <div>
                       <p className="text-sm font-semibold text-gray-800 mb-1">Hasil enrollment</p>
                       <p className="text-xs text-gray-500">Satu foto wajah dan descriptor akan disimpan untuk matching.</p>
@@ -841,7 +841,7 @@ export function StudentManagement() {
                 <canvas ref={canvasRef} className="hidden" />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 sticky bottom-0 bg-white pb-1">
                 <button
                   type="button"
                   onClick={handleCloseModal}
