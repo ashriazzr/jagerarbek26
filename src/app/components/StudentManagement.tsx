@@ -682,8 +682,8 @@ export function StudentManagement() {
 
       {/* ─── ADD/EDIT STUDENT MODAL ───────────────────────────────────────────── */}
       {isStudentModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full h-[calc(100dvh-1rem)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <h3 className="text-xl font-bold text-gray-900">
                 {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
@@ -692,7 +692,8 @@ export function StudentManagement() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="p-6 space-y-4 overflow-y-auto min-h-0 flex-1">
               {/* Kelas select */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -841,7 +842,9 @@ export function StudentManagement() {
                 <canvas ref={canvasRef} className="hidden" />
               </div>
 
-              <div className="flex gap-3 pt-2 sticky bottom-0 bg-white pb-1">
+              </div>
+
+              <div className="flex gap-3 p-6 pt-3 border-t border-gray-100 bg-white">
                 <button
                   type="button"
                   onClick={handleCloseModal}
