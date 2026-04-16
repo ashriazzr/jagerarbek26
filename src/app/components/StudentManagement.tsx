@@ -40,6 +40,7 @@ export function StudentManagement() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     loadAll();
@@ -149,6 +150,71 @@ export function StudentManagement() {
       toast.error('Gagal mendaftarkan wajah');
     } finally {
       setCameraLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa gambar');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setCameraLoading(true);
+      setCameraError('');
+      await loadFaceModels();
+
+      const objectUrl = URL.createObjectURL(file);
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Gagal membaca gambar'));
+        img.src = objectUrl;
+      });
+
+      const descriptor = await captureFaceDescriptor(image);
+      URL.revokeObjectURL(objectUrl);
+
+      if (!descriptor) {
+        setCameraError('Wajah tidak terdeteksi pada foto. Gunakan foto yang lebih jelas dan menghadap depan.');
+        toast.error('Wajah tidak terdeteksi pada foto');
+        event.target.value = '';
+        return;
+      }
+
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        toast.error('Kanvas tidak tersedia');
+        event.target.value = '';
+        return;
+      }
+
+      const maxSize = 900;
+      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        toast.error('Gagal menyiapkan kanvas');
+        event.target.value = '';
+        return;
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      setFaceImage(canvas.toDataURL('image/jpeg', 0.9));
+      setFaceDescriptor(descriptor);
+      toast.success('Wajah siswa berhasil didaftarkan dari foto');
+    } catch (error) {
+      console.error('Error uploading face photo:', error);
+      toast.error('Gagal memproses foto wajah');
+    } finally {
+      setCameraLoading(false);
+      event.target.value = '';
     }
   };
 
@@ -754,6 +820,22 @@ export function StudentManagement() {
                     {cameraLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanFace className="w-4 h-4" />}
                     Scan Wajah Siswa
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={cameraLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-semibold hover:bg-indigo-100 disabled:opacity-60"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Foto Siswa
+                  </button>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
                 </div>
 
                 <canvas ref={canvasRef} className="hidden" />
