@@ -87,7 +87,18 @@ export function ConfiscationForm() {
     try {
       const records = await getConfiscationRecords();
       const sorted = [...records].sort(
-        (a, b) => new Date(b.confiscationDate).getTime() - new Date(a.confiscationDate).getTime()
+        (a, b) => {
+          try {
+            const dateA = new Date(`${a.confiscationDate || '1970-01-01'}T00:00:00`);
+            const dateB = new Date(`${b.confiscationDate || '1970-01-01'}T00:00:00`);
+            if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+              return 0;
+            }
+            return dateB.getTime() - dateA.getTime();
+          } catch {
+            return 0;
+          }
+        }
       );
       setConfiscationRecords(sorted);
     } catch (error) {

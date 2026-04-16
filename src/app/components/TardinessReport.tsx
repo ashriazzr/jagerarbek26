@@ -47,9 +47,16 @@ export function TardinessReport() {
 
     // Sort by date descending
     filtered.sort((a, b) => {
-      const dateA = new Date(`${a.lateDate}T${a.lateTime}`);
-      const dateB = new Date(`${b.lateDate}T${b.lateTime}`);
-      return dateB.getTime() - dateA.getTime();
+      try {
+        const dateA = new Date(`${a.lateDate || '1970-01-01'}T${a.lateTime || '00:00'}`);
+        const dateB = new Date(`${b.lateDate || '1970-01-01'}T${b.lateTime || '00:00'}`);
+        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+          return 0;
+        }
+        return dateB.getTime() - dateA.getTime();
+      } catch {
+        return 0;
+      }
     });
 
     setFilteredData(filtered);
@@ -274,7 +281,7 @@ export function TardinessReport() {
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {format(new Date(record.lateDate), "dd MMM yyyy", { locale: localeId })}
+                        {record.lateDate ? format(new Date(`${record.lateDate}T00:00:00`), "dd MMM yyyy", { locale: localeId }) : '-'}
                       </div>
                       <div className="text-sm text-gray-500">{record.lateTime}</div>
                     </td>
