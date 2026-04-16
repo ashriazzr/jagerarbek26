@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Clock,
+  Camera,
   ChevronDown,
   Loader2,
   AlertCircle,
@@ -19,8 +20,7 @@ import { LatenessRecord, Student } from '../types';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { safeDate, safeFormatDate } from '../utils/date';
-import { formatDurationMinutes } from '../utils/date';
+import { safeDate, safeFormatDate, formatDurationMinutes } from '../utils/date';
 
 export function LatenessForm() {
   const [selectedClass, setSelectedClass] = useState('');
@@ -29,6 +29,10 @@ export function LatenessForm() {
   const [timestamp, setTimestamp] = useState('');
   const [minutesLate, setMinutesLate] = useState(0);
   const [schoolStartHour, setSchoolStartHour] = useState(7);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [faceImage, setFaceImage] = useState('');
 
   const [classes, setClasses] = useState<string[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -41,6 +45,9 @@ export function LatenessForm() {
   const [filterClass, setFilterClass] = useState('all');
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const reasonOptions = [
     'Bangun kesiangan',
@@ -58,6 +65,7 @@ export function LatenessForm() {
     startRealtimeClock();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      stopCamera();
     };
   }, []);
 
@@ -116,6 +124,124 @@ export function LatenessForm() {
     }
   };
 
+  const stopCamera = () => {
+    const stream = streamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Browser tidak mendukung akses kamera');
+      return;
+    }
+
+    try {
+      setCameraLoading(true);
+      setCameraError('');
+      stopCamera();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      setCameraActive(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+    } catch (error) {
+      console.error('Error starting camera:', error);
+      setCameraError('Tidak bisa mengakses kamera. Pastikan izin kamera diaktifkan.');
+      toast.error('Gagal membuka kamera');
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const detectFacePresence = async () => {
+    const video = videoRef.current;
+    if (!video) return true;
+
+    const detectorCtor = (window as Window & {
+      FaceDetector?: new (options?: { fastMode?: boolean; maxDetectedFaces?: number }) => {
+        detect: (source: HTMLVideoElement) => Promise<Array<unknown>>;
+      };
+    }).FaceDetector;
+
+    if (!detectorCtor) return true;
+
+    try {
+      const detector = new detectorCtor({ fastMode: true, maxDetectedFaces: 1 });
+      const faces = await detector.detect(video);
+      return faces.length > 0;
+    } catch (error) {
+      console.warn('Face detection fallback:', error);
+      return true;
+    }
+  };
+
+  const captureFace = async () => {
+    if (!cameraActive) {
+      toast.error('Buka kamera terlebih dahulu');
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) {
+      toast.error('Kamera belum siap');
+      return;
+    }
+
+    try {
+      setCameraLoading(true);
+
+      const hasFace = await detectFacePresence();
+      if (!hasFace) {
+        setCameraError('Wajah belum terdeteksi. Arahkan muka ke kamera lalu coba lagi.');
+        toast.error('Wajah belum terdeteksi');
+        return;
+      }
+
+      const width = video.videoWidth || 640;
+      const height = video.videoHeight || 480;
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        toast.error('Gagal menyiapkan kanvas');
+        return;
+      }
+
+      context.drawImage(video, 0, 0, width, height);
+      setFaceImage(canvas.toDataURL('image/jpeg', 0.9));
+      setCameraError('');
+      toast.success('Wajah berhasil dipindai');
+    } catch (error) {
+      console.error('Error capturing face:', error);
+      toast.error('Gagal memindai wajah');
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const retakeFace = () => {
+    setFaceImage('');
+    setCameraError('');
+  };
+
   const calculateMinutesLate = (date: Date) => {
     const totalMinutes = date.getHours() * 60 + date.getMinutes();
     const schoolStart = schoolStartHour * 60;
@@ -160,11 +286,13 @@ export function LatenessForm() {
         reason: reason.trim(),
         timestamp,
         minutesLate,
+        faceImage: faceImage || null,
       };
       await addLatenessRecord(record);
       await loadRecords();
 
       setReason('');
+      setFaceImage('');
       toast.success(`✅ Keterlambatan ${student.name} berhasil dicatat`);
     } catch (error) {
       console.error('Error saving record:', error);
@@ -354,6 +482,100 @@ export function LatenessForm() {
               />
             </div>
 
+            {/* Face scan */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Scan Muka dari Kamera
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Opsional, tapi disimpan sebagai bukti keterlambatan kalau backend sudah punya kolom fotonya.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={cameraActive ? stopCamera : startCamera}
+                    disabled={cameraLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    <Camera className="w-4 h-4" />
+                    {cameraActive ? 'Tutup Kamera' : 'Buka Kamera'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={captureFace}
+                    disabled={!cameraActive || cameraLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                  >
+                    {cameraLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                    Scan Wajah
+                  </button>
+                </div>
+              </div>
+
+              {cameraError && (
+                <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  {cameraError}
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="overflow-hidden rounded-xl bg-black aspect-video relative">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`h-full w-full object-cover ${cameraActive ? 'opacity-100' : 'opacity-40'}`}
+                  />
+                  {!cameraActive && (
+                    <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80 px-4 text-center">
+                      Kamera belum aktif. Klik buka kamera untuk mulai scan.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 min-h-[240px] flex flex-col justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 mb-1">Hasil Scan</p>
+                    <p className="text-xs text-gray-500">
+                      Foto yang diambil akan ikut disimpan bersama data keterlambatan.
+                    </p>
+                  </div>
+
+                  {faceImage ? (
+                    <div className="space-y-3">
+                      <img
+                        src={faceImage}
+                        alt="Hasil scan wajah"
+                        className="w-full rounded-xl border border-gray-200 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={retakeFace}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Scan ulang
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-50 border border-gray-100 text-center px-6 py-10">
+                      <div>
+                        <Camera className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-gray-700">Belum ada foto wajah</p>
+                        <p className="text-xs text-gray-500 mt-1">Buka kamera lalu klik scan wajah.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+
             {/* Submit */}
             <button
               type="submit"
@@ -412,7 +634,13 @@ export function LatenessForm() {
                 filteredRecords.map((record) => (
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {safeFormatDate(record.timestamp, "dd/MM/yy HH:mm", { locale: localeId })}
+                      <div>{safeFormatDate(record.timestamp, "dd/MM/yy HH:mm", { locale: localeId })}</div>
+                      {record.faceImage && (
+                        <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                          <Camera className="w-3 h-3" />
+                          Scan tersimpan
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {record.studentName}

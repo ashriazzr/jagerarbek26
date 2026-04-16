@@ -56,6 +56,7 @@ create table if not exists public.tardiness_records (
   reason text not null,
   recorded_at timestamptz not null default now(),
   minutes_late integer not null default 0,
+  face_image text,
   created_at timestamptz not null default now(),
   constraint tardiness_minutes_late_check check (minutes_late >= 0)
 );

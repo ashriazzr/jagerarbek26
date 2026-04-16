@@ -15,6 +15,7 @@ const mapLatenessRecord = (record: any): LatenessRecord => ({
   reason: String(record.reason ?? ''),
   timestamp: toValidDateString(record.timestamp ?? record.recorded_at, new Date().toISOString()),
   minutesLate: Number(record.minutesLate ?? record.minutes_late ?? 0),
+  faceImage: record.faceImage ?? record.face_image ?? null,
 });
 
 const mapConfiscationRecord = (record: any): ConfiscationRecord => ({
@@ -103,8 +104,18 @@ export const getLatenessRecords = async (): Promise<LatenessRecord[]> => {
 };
 
 export const addLatenessRecord = async (record: Omit<LatenessRecord, 'id'>): Promise<LatenessRecord> => {
-  const result = await tardinessAPI.create(record);
-  return mapLatenessRecord(result.data);
+  try {
+    const result = await tardinessAPI.create(record);
+    return mapLatenessRecord(result.data);
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if (record.faceImage && /face_image|column .* does not exist|invalid input syntax/i.test(message)) {
+      const { faceImage, ...fallbackRecord } = record as any;
+      const result = await tardinessAPI.create(fallbackRecord);
+      return mapLatenessRecord(result.data);
+    }
+    throw error;
+  }
 };
 
 export const deleteLatenessRecord = async (id: string): Promise<void> => {

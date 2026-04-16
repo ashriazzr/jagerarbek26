@@ -123,7 +123,7 @@ export const studentsAPI = {
 
 // Tardiness API
 export const tardinessAPI = {
-  getAll: () => apiCall('/tardiness_records?select=id,student_id,student_name,student_class,reason,recorded_at,minutes_late'),
+  getAll: () => apiCall('/tardiness_records?select=*'),
   create: (data: any) =>
     apiCall('/tardiness_records', {
       method: 'POST',
@@ -134,6 +134,7 @@ export const tardinessAPI = {
         reason: data.reason,
         recorded_at: data.timestamp || data.recorded_at || new Date().toISOString(),
         minutes_late: data.minutesLate ?? data.minutes_late ?? 0,
+        ...(data.faceImage || data.face_image ? { face_image: data.faceImage || data.face_image } : {}),
       }),
     }),
   delete: (id: string) =>

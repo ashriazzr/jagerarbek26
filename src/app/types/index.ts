@@ -13,6 +13,7 @@ export interface LatenessRecord {
   reason: string;
   timestamp: string;
   minutesLate: number;
+  faceImage?: string | null;
 }
 
 export interface ConfiscationRecord {
