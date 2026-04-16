@@ -5,6 +5,7 @@ import { Tardiness } from "../types";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { toast } from "sonner";
+import { safeDate, safeFormatDate } from "../utils/date";
 
 export function TardinessReport() {
   const [tardiness, setTardiness] = useState<Tardiness[]>([]);
@@ -48,11 +49,8 @@ export function TardinessReport() {
     // Sort by date descending
     filtered.sort((a, b) => {
       try {
-        const dateA = new Date(`${a.lateDate || '1970-01-01'}T${a.lateTime || '00:00'}`);
-        const dateB = new Date(`${b.lateDate || '1970-01-01'}T${b.lateTime || '00:00'}`);
-        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-          return 0;
-        }
+        const dateA = safeDate(`${a.lateDate || '1970-01-01'}T${a.lateTime || '00:00'}`);
+        const dateB = safeDate(`${b.lateDate || '1970-01-01'}T${b.lateTime || '00:00'}`);
         return dateB.getTime() - dateA.getTime();
       } catch {
         return 0;
@@ -281,7 +279,7 @@ export function TardinessReport() {
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {record.lateDate ? format(new Date(`${record.lateDate}T00:00:00`), "dd MMM yyyy", { locale: localeId }) : '-'}
+                        {record.lateDate ? safeFormatDate(`${record.lateDate}T00:00:00`, "dd MMM yyyy", { locale: localeId }) : '-'}
                       </div>
                       <div className="text-sm text-gray-500">{record.lateTime}</div>
                     </td>

@@ -19,6 +19,7 @@ import { LatenessRecord, Student } from '../types';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { safeDate, safeFormatDate } from '../utils/date';
 
 export function LatenessForm() {
   const [selectedClass, setSelectedClass] = useState('');
@@ -91,7 +92,7 @@ export function LatenessForm() {
       setStudents(allStudents);
       setClasses(uniqueClasses);
       const sorted = [...records].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        (a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime()
       );
       setLatenessRecords(sorted);
     } catch (error) {
@@ -106,7 +107,7 @@ export function LatenessForm() {
     try {
       const records = await getLatenessRecords();
       const sorted = [...records].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        (a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime()
       );
       setLatenessRecords(sorted);
     } catch (error) {
@@ -127,7 +128,7 @@ export function LatenessForm() {
       timerRef.current = null;
     }
     setTimestamp(value);
-    calculateMinutesLate(new Date(value));
+    calculateMinutesLate(safeDate(value));
   };
 
   const handleResetToNow = () => {
@@ -304,7 +305,7 @@ export function LatenessForm() {
                     value={schoolStartHour}
                     onChange={(e) => {
                       setSchoolStartHour(Number(e.target.value));
-                      if (timestamp) calculateMinutesLate(new Date(timestamp));
+                      if (timestamp) calculateMinutesLate(safeDate(timestamp));
                     }}
                     className="w-16 px-2 py-3 border border-gray-300 rounded-xl text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -410,7 +411,7 @@ export function LatenessForm() {
                 filteredRecords.map((record) => (
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {format(new Date(record.timestamp), "dd/MM/yy HH:mm", { locale: localeId })}
+                      {safeFormatDate(record.timestamp, "dd/MM/yy HH:mm", { locale: localeId })}
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {record.studentName}

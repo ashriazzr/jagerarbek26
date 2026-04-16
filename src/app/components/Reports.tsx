@@ -25,6 +25,7 @@ import {
   Line,
 } from 'recharts';
 import { toast } from 'sonner';
+import { safeDate, safeFormatDate } from '../utils/date';
 
 export function Reports() {
   const [loading, setLoading] = useState(true);
@@ -54,7 +55,7 @@ export function Reports() {
 
   // ─── Daily ───────────────────────────────────────────────────────────────────
   const dailyRecords = allRecords.filter(r => {
-    const d = new Date(r.timestamp);
+    const d = safeDate(r.timestamp);
     return d >= startOfDay(new Date(selectedDate)) && d <= endOfDay(new Date(selectedDate));
   });
 
@@ -64,18 +65,18 @@ export function Reports() {
     : 0;
 
   // ─── Monthly ─────────────────────────────────────────────────────────────────
-  const monthDate = new Date(selectedMonth + '-01');
+  const monthDate = safeDate(`${selectedMonth}-01`);
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
 
   const monthlyRecords = allRecords.filter(r => {
-    const d = new Date(r.timestamp);
+    const d = safeDate(r.timestamp);
     return d >= monthStart && d <= monthEnd;
   });
 
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const monthlyChartData = days.map(day => {
-    const dayRecs = monthlyRecords.filter(r => isSameDay(new Date(r.timestamp), day));
+    const dayRecs = monthlyRecords.filter(r => isSameDay(safeDate(r.timestamp), day));
     return {
       date: format(day, 'dd', { locale: localeId }),
       fullDate: format(day, 'dd MMM yyyy', { locale: localeId }),
@@ -113,12 +114,12 @@ export function Reports() {
   const exportDailyCSV = () => {
     const rows = [
       ['Laporan Keterlambatan Harian'],
-      [`Tanggal: ${format(new Date(selectedDate), 'dd MMMM yyyy', { locale: localeId })}`],
+      [`Tanggal: ${safeFormatDate(selectedDate, 'dd MMMM yyyy', { locale: localeId })}`],
       [''],
       ['No', 'Waktu', 'NISN', 'Nama', 'Kelas', 'Alasan', 'Terlambat (menit)'],
       ...dailyRecords.map((r, i) => [
         i + 1,
-        format(new Date(r.timestamp), 'HH:mm'),
+        safeFormatDate(r.timestamp, 'HH:mm'),
         allStudents.find(s => s.id === r.studentId)?.nisn || '-',
         r.studentName,
         r.studentClass,
@@ -241,11 +242,11 @@ export function Reports() {
             <tbody className="divide-y divide-gray-50">
               {dailyRecords.length > 0 ? (
                 dailyRecords
-                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                  .sort((a, b) => safeDate(a.timestamp).getTime() - safeDate(b.timestamp).getTime())
                   .map(r => (
                     <tr key={r.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                        {format(new Date(r.timestamp), 'HH:mm')}
+                        {safeFormatDate(r.timestamp, 'HH:mm')}
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">{r.studentName}</td>
                       <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{r.studentClass}</td>

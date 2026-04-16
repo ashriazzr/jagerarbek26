@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { exportDailyReport, exportMonthlyReport, exportStudentReport } from '../utils/exportExcel';
+import { safeDate, safeFormatDate } from '../utils/date';
 
 type Tab = 'daily' | 'monthly' | 'student';
 
@@ -51,14 +52,14 @@ export function AccumulationReports() {
   };
 
   // ─── SHARED ───────────────────────────────────────────────────────────────
-  const monthDate = new Date(selectedMonth + '-01');
+  const monthDate = safeDate(`${selectedMonth}-01`);
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
   const allClasses = Array.from(new Set(records.map(r => r.studentClass))).sort();
 
   // ─── DAILY DATA ───────────────────────────────────────────────────────────
   const dailyAll = records.filter(r =>
-    format(new Date(r.timestamp), 'yyyy-MM-dd') === selectedDate
+    safeFormatDate(r.timestamp, 'yyyy-MM-dd') === selectedDate
   );
   const dailyFiltered = selectedClass === 'all'
     ? dailyAll : dailyAll.filter(r => r.studentClass === selectedClass);
@@ -68,7 +69,7 @@ export function AccumulationReports() {
 
   const hourlyData = Array.from({ length: 24 }, (_, h) => ({
     hour: `${String(h).padStart(2, '0')}:00`,
-    count: dailyFiltered.filter(r => new Date(r.timestamp).getHours() === h).length,
+    count: dailyFiltered.filter(r => safeDate(r.timestamp).getHours() === h).length,
   })).filter(d => d.count > 0 || (parseInt(d.hour) >= 6 && parseInt(d.hour) <= 11));
 
   const topDailyClass = dailyTotal > 0
@@ -78,7 +79,7 @@ export function AccumulationReports() {
 
   // ─── MONTHLY DATA ─────────────────────────────────────────────────────────
   const monthlyAll = records.filter(r => {
-    const d = new Date(r.timestamp);
+    const d = safeDate(r.timestamp);
     return d >= monthStart && d <= monthEnd;
   });
   const monthlyFiltered = selectedClass === 'all'
@@ -86,7 +87,7 @@ export function AccumulationReports() {
 
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const dailyChartData = days.map(day => {
-    const dayRecs = monthlyFiltered.filter(r => isSameDay(new Date(r.timestamp), day));
+    const dayRecs = monthlyFiltered.filter(r => isSameDay(safeDate(r.timestamp), day));
     return {
       date: format(day, 'dd', { locale: localeId }),
       day: format(day, 'EEE', { locale: localeId }),
@@ -104,7 +105,7 @@ export function AccumulationReports() {
 
   // ─── STUDENT RANKING DATA ─────────────────────────────────────────────────
   const studentMonthly = records.filter(r => {
-    const d = new Date(r.timestamp);
+    const d = safeDate(r.timestamp);
     return d >= monthStart && d <= monthEnd;
   });
   const studentFiltered = selectedClass === 'all'
@@ -124,10 +125,10 @@ export function AccumulationReports() {
   // ─── EXPORTS ──────────────────────────────────────────────────────────────
   const handleExportDaily = () => {
     if (dailyFiltered.length === 0) { toast.error('Tidak ada data untuk diekspor'); return; }
-    const dateLabel = format(new Date(selectedDate), 'dd MMMM yyyy', { locale: localeId });
+    const dateLabel = safeFormatDate(selectedDate, 'dd MMMM yyyy', { locale: localeId });
     exportDailyReport(
-      dailyFiltered.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        .map(r => ({ ...r, waktu: format(new Date(r.timestamp), 'HH:mm') })),
+      dailyFiltered.sort((a, b) => safeDate(a.timestamp).getTime() - safeDate(b.timestamp).getTime())
+        .map(r => ({ ...r, waktu: safeFormatDate(r.timestamp, 'HH:mm') })),
       students,
       dateLabel,
       `Laporan-Harian-${selectedDate}.xlsx`
@@ -282,7 +283,7 @@ export function AccumulationReports() {
               <p className="text-xs font-semibold text-orange-600">Total Terlambat</p>
               <p className="text-4xl font-bold text-orange-900 mt-1">{dailyTotal}</p>
               <p className="text-xs text-orange-500 mt-1 truncate">
-                {format(new Date(selectedDate + 'T12:00'), 'dd MMMM yyyy', { locale: localeId })}
+                {safeFormatDate(`${selectedDate}T12:00`, 'dd MMMM yyyy', { locale: localeId })}
               </p>
             </div>
             <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100">
@@ -323,7 +324,7 @@ export function AccumulationReports() {
             <div className="p-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">Detail Keterlambatan</h3>
               <p className="text-sm text-gray-500 mt-0.5">
-                {format(new Date(selectedDate + 'T12:00'), 'EEEE, dd MMMM yyyy', { locale: localeId })}
+                {safeFormatDate(`${selectedDate}T12:00`, 'EEEE, dd MMMM yyyy', { locale: localeId })}
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -341,12 +342,12 @@ export function AccumulationReports() {
                 <tbody className="divide-y divide-gray-50">
                   {dailyFiltered.length > 0 ? (
                     [...dailyFiltered]
-                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                      .sort((a, b) => safeDate(a.timestamp).getTime() - safeDate(b.timestamp).getTime())
                       .map((r, i) => (
                         <tr key={r.id} className="hover:bg-gray-50">
                           <td className="px-5 py-4 text-sm text-gray-400">{i + 1}</td>
                           <td className="px-5 py-4 text-sm text-gray-700 whitespace-nowrap font-medium">
-                            {format(new Date(r.timestamp), 'HH:mm')}
+                            {safeFormatDate(r.timestamp, 'HH:mm')}
                           </td>
                           <td className="px-5 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">{r.studentName}</td>
                           <td className="px-5 py-4 whitespace-nowrap">

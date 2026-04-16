@@ -6,6 +6,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from '
 import { id as localeId } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { toast } from 'sonner';
+import { safeDate, safeFormatDate } from '../utils/date';
 
 type Tab = 'daily' | 'monthly' | 'student';
 
@@ -42,7 +43,7 @@ export function Accumulation() {
   // ─── DAILY ACCUMULATION ───────────────────────────────────────────────────
 
   const dailyRecords = records.filter(r => {
-    const recDate = format(new Date(r.timestamp), 'yyyy-MM-dd');
+    const recDate = safeFormatDate(r.timestamp, 'yyyy-MM-dd');
     return recDate === selectedDate;
   });
 
@@ -53,7 +54,7 @@ export function Accumulation() {
   // Group by hour
   const hourlyData = Array.from({ length: 24 }, (_, h) => ({
     hour: `${String(h).padStart(2, '0')}:00`,
-    count: filteredDailyRecords.filter(r => new Date(r.timestamp).getHours() === h).length,
+    count: filteredDailyRecords.filter(r => safeDate(r.timestamp).getHours() === h).length,
   })).filter(d => d.count > 0 || (d.hour >= '06:00' && d.hour <= '12:00'));
 
   const dailyTotal = filteredDailyRecords.length;
@@ -63,12 +64,12 @@ export function Accumulation() {
 
   // ─── MONTHLY ACCUMULATION ─────────────────────────────────────────────────
 
-  const monthDate = new Date(selectedMonth + '-01');
+  const monthDate = safeDate(`${selectedMonth}-01`);
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
 
   const monthlyRecords = records.filter(r => {
-    const d = new Date(r.timestamp);
+    const d = safeDate(r.timestamp);
     return d >= monthStart && d <= monthEnd;
   });
 
@@ -78,7 +79,7 @@ export function Accumulation() {
 
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const dailyChartData = days.map(day => {
-    const dayRecs = filteredMonthlyRecords.filter(r => isSameDay(new Date(r.timestamp), day));
+    const dayRecs = filteredMonthlyRecords.filter(r => isSameDay(safeDate(r.timestamp), day));
     return {
       date: format(day, 'dd', { locale: localeId }),
       day: format(day, 'EEE', { locale: localeId }),
@@ -94,7 +95,7 @@ export function Accumulation() {
   // ─── PER-STUDENT ACCUMULATION ─────────────────────────────────────────────
 
   const monthlyForStudent = records.filter(r => {
-    const d = new Date(r.timestamp);
+    const d = safeDate(r.timestamp);
     return d >= monthStart && d <= monthEnd;
   });
 
@@ -215,7 +216,7 @@ export function Accumulation() {
             <div className="bg-orange-50 rounded-2xl p-5 border border-orange-100">
               <p className="text-xs font-semibold text-orange-600">Total Terlambat</p>
               <p className="text-4xl font-bold text-orange-900 mt-1">{dailyTotal}</p>
-              <p className="text-xs text-orange-500 mt-1">{format(new Date(selectedDate), 'dd MMMM yyyy', { locale: localeId })}</p>
+              <p className="text-xs text-orange-500 mt-1">{safeFormatDate(selectedDate, 'dd MMMM yyyy', { locale: localeId })}</p>
             </div>
             <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100">
               <p className="text-xs font-semibold text-purple-600">Rata-rata Keterlambatan</p>
@@ -281,12 +282,12 @@ export function Accumulation() {
                 <tbody className="divide-y divide-gray-50">
                   {filteredDailyRecords.length > 0 ? (
                     filteredDailyRecords
-                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                      .sort((a, b) => safeDate(a.timestamp).getTime() - safeDate(b.timestamp).getTime())
                       .map((r, i) => (
                         <tr key={r.id} className="hover:bg-gray-50">
                           <td className="px-5 py-4 text-sm text-gray-400">{i + 1}</td>
                           <td className="px-5 py-4 text-sm text-gray-700 whitespace-nowrap">
-                            {format(new Date(r.timestamp), 'HH:mm')}
+                            {safeFormatDate(r.timestamp, 'HH:mm')}
                           </td>
                           <td className="px-5 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">
                             {r.studentName}

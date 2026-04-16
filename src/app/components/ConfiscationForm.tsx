@@ -12,6 +12,7 @@ import { ConfiscationRecord, Student } from '../types';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { safeDate, safeFormatDate } from '../utils/date';
 
 export function ConfiscationForm() {
   const [selectedClass, setSelectedClass] = useState('');
@@ -72,7 +73,7 @@ export function ConfiscationForm() {
       setStudents(allStudents);
       setClasses(uniqueClasses);
       const sorted = [...records].sort(
-        (a, b) => new Date(b.confiscationDate).getTime() - new Date(a.confiscationDate).getTime()
+        (a, b) => safeDate(b.confiscationDate).getTime() - safeDate(a.confiscationDate).getTime()
       );
       setConfiscationRecords(sorted);
     } catch (error) {
@@ -431,7 +432,7 @@ export function ConfiscationForm() {
                 filteredRecords.map((record) => (
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {format(new Date(record.confiscationDate), 'dd/MM/yyyy', { locale: localeId })}
+                      {safeFormatDate(record.confiscationDate, 'dd/MM/yyyy', { locale: localeId })}
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {record.studentName}
@@ -461,7 +462,7 @@ export function ConfiscationForm() {
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
                       {record.pickupDate
-                        ? format(new Date(record.pickupDate), 'dd/MM/yyyy', { locale: localeId })
+                        ? safeFormatDate(record.pickupDate, 'dd/MM/yyyy', { locale: localeId })
                         : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">

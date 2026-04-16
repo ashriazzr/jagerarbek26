@@ -17,6 +17,7 @@ import { seedAPI } from '../utils/api';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { safeDate, safeFormatDate } from '../utils/date';
 
 export function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -56,12 +57,12 @@ export function Dashboard() {
       const monthEnd = endOfMonth(today);
 
       const todayLate = latenessRecords.filter((r) => {
-        const d = new Date(r.timestamp);
+        const d = safeDate(r.timestamp);
         return d >= todayStart && d <= todayEnd;
       });
 
       const monthlyLate = latenessRecords.filter((r) => {
-        const d = new Date(r.timestamp);
+        const d = safeDate(r.timestamp);
         return d >= monthStart && d <= monthEnd;
       });
 
@@ -90,7 +91,7 @@ export function Dashboard() {
 
       setRecentLateness(
         [...latenessRecords]
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime())
           .slice(0, 5)
       );
 
@@ -98,7 +99,7 @@ export function Dashboard() {
         [...confiscationRecords]
           .sort(
             (a, b) =>
-              new Date(b.confiscationDate).getTime() - new Date(a.confiscationDate).getTime()
+              safeDate(b.confiscationDate).getTime() - safeDate(a.confiscationDate).getTime()
           )
           .slice(0, 5)
       );
@@ -277,7 +278,7 @@ export function Dashboard() {
                       <p className="text-xs text-gray-500 mt-1 truncate">{record.reason}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-xs text-gray-400">
-                          {format(new Date(record.timestamp), "dd MMM, HH:mm", { locale: localeId })}
+                          {safeFormatDate(record.timestamp, "dd MMM, HH:mm", { locale: localeId })}
                         </span>
                         <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
                           +{record.minutesLate} menit
@@ -318,7 +319,7 @@ export function Dashboard() {
                       <p className="text-sm text-gray-800 mt-1 font-medium truncate">{record.item}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-gray-400">
-                          {format(new Date(record.confiscationDate), "dd MMM yyyy", { locale: localeId })}
+                          {safeFormatDate(record.confiscationDate, "dd MMM yyyy", { locale: localeId })}
                         </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${record.status === 'disita' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                           {record.status === 'disita' ? 'Disita' : 'Dikembalikan'}

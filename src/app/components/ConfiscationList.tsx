@@ -5,6 +5,7 @@ import { Confiscation } from "../types";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { toast } from "sonner";
+import { safeDate, safeFormatDate } from "../utils/date";
 
 export function ConfiscationList() {
   const [confiscations, setConfiscations] = useState<Confiscation[]>([]);
@@ -42,8 +43,8 @@ export function ConfiscationList() {
 
     // Sort by date descending
     filtered.sort((a, b) => {
-      const dateA = new Date(a.confiscationDate);
-      const dateB = new Date(b.confiscationDate);
+      const dateA = safeDate(a.confiscationDate);
+      const dateB = safeDate(b.confiscationDate);
       return dateB.getTime() - dateA.getTime();
     });
 
@@ -226,13 +227,13 @@ export function ConfiscationList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {format(new Date(item.confiscationDate), "dd MMM yyyy", { locale: localeId })}
+                        {safeFormatDate(item.confiscationDate, "dd MMM yyyy", { locale: localeId })}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {item.returnDate
-                          ? format(new Date(item.returnDate), "dd MMM yyyy", { locale: localeId })
+                          ? safeFormatDate(item.returnDate, "dd MMM yyyy", { locale: localeId })
                           : "-"}
                       </div>
                     </td>
