@@ -1,6 +1,34 @@
 import { Student, LatenessRecord, ConfiscationRecord } from '../types';
 import { studentsAPI, tardinessAPI, confiscationAPI, classesAPI } from './api';
 
+const toValidDateString = (value: unknown, fallback = '') => {
+  if (typeof value !== 'string' || !value.trim()) return fallback;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : value;
+};
+
+const mapLatenessRecord = (record: any): LatenessRecord => ({
+  id: String(record.id),
+  studentId: String(record.studentId ?? record.student_id ?? ''),
+  studentName: String(record.studentName ?? record.student_name ?? ''),
+  studentClass: String(record.studentClass ?? record.student_class ?? ''),
+  reason: String(record.reason ?? ''),
+  timestamp: toValidDateString(record.timestamp ?? record.recorded_at, new Date().toISOString()),
+  minutesLate: Number(record.minutesLate ?? record.minutes_late ?? 0),
+});
+
+const mapConfiscationRecord = (record: any): ConfiscationRecord => ({
+  id: String(record.id),
+  studentId: String(record.studentId ?? record.student_id ?? ''),
+  studentName: String(record.studentName ?? record.student_name ?? ''),
+  studentClass: String(record.studentClass ?? record.student_class ?? ''),
+  item: String(record.item ?? ''),
+  confiscationDate: toValidDateString(record.confiscationDate ?? record.confiscation_date, new Date().toISOString()),
+  pickupDate: record.pickupDate ?? record.pickup_date ?? null,
+  status: record.status === 'dikembalikan' || record.status === 'Dikembalikan' ? 'dikembalikan' : 'disita',
+  notes: record.notes ?? undefined,
+});
+
 // ─── CLASSES ─────────────────────────────────────────────────────────────────
 
 export const getClasses = async (): Promise<string[]> => {
@@ -52,12 +80,12 @@ export const getStudentsByClass = async (className: string): Promise<Student[]> 
 
 export const getLatenessRecords = async (): Promise<LatenessRecord[]> => {
   const result = await tardinessAPI.getAll();
-  return (result.data || []) as LatenessRecord[];
+  return ((result.data || []) as any[]).map(mapLatenessRecord);
 };
 
 export const addLatenessRecord = async (record: Omit<LatenessRecord, 'id'>): Promise<LatenessRecord> => {
   const result = await tardinessAPI.create(record);
-  return result.data as LatenessRecord;
+  return mapLatenessRecord(result.data);
 };
 
 export const deleteLatenessRecord = async (id: string): Promise<void> => {
@@ -68,17 +96,17 @@ export const deleteLatenessRecord = async (id: string): Promise<void> => {
 
 export const getConfiscationRecords = async (): Promise<ConfiscationRecord[]> => {
   const result = await confiscationAPI.getAll();
-  return (result.data || []) as ConfiscationRecord[];
+  return ((result.data || []) as any[]).map(mapConfiscationRecord);
 };
 
 export const addConfiscationRecord = async (record: Omit<ConfiscationRecord, 'id'>): Promise<ConfiscationRecord> => {
   const result = await confiscationAPI.create(record);
-  return result.data as ConfiscationRecord;
+  return mapConfiscationRecord(result.data);
 };
 
 export const updateConfiscationRecord = async (id: string, record: ConfiscationRecord): Promise<ConfiscationRecord> => {
   const result = await confiscationAPI.update(id, record);
-  return result.data as ConfiscationRecord;
+  return mapConfiscationRecord(result.data);
 };
 
 export const deleteConfiscationRecord = async (id: string): Promise<void> => {
