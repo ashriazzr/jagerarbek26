@@ -17,12 +17,11 @@ export function Layout() {
 
   const menuItems = [
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/absensi", icon: ClipboardList, label: "Absensi Keterlambatan" },
-    { path: "/laporan", icon: BarChart3, label: "Laporan Keterlambatan" },
+    { path: "/keterlambatan", icon: ClipboardList, label: "Absensi Keterlambatan" },
+    { path: "/akumulasi", icon: BarChart3, label: "Laporan Keterlambatan" },
     { path: "/razia", icon: Package, label: "Form Razia" },
-    { path: "/daftar-razia", icon: ListChecks, label: "Daftar Razia" },
-    { path: "/data-master", icon: Database, label: "Data Master" },
-    { path: "/statistik", icon: BarChart3, label: "Statistik" },
+    { path: "/siswa", icon: Database, label: "Data Siswa" },
+    { path: "/tutorial", icon: ListChecks, label: "Tutorial GitHub Pages" },
   ];
 
   const isActive = (path: string) => {

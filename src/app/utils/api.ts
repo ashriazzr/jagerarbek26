@@ -77,6 +77,13 @@ async function buildStudentPayload(data: any) {
     phone: data.phone ? String(data.phone).trim() : null,
     class: className,
     class_id: classId,
+    face_image: data.faceImage || data.face_image || null,
+    face_descriptor: Array.isArray(data.faceDescriptor)
+      ? data.faceDescriptor
+      : Array.isArray(data.face_descriptor)
+        ? data.face_descriptor
+        : null,
+    face_enrolled_at: data.faceEnrolledAt || data.face_enrolled_at || ((data.faceImage || data.faceDescriptor || data.face_descriptor) ? new Date().toISOString() : null),
   };
 }
 
@@ -104,7 +111,7 @@ export const classesAPI = {
 
 // Students API
 export const studentsAPI = {
-  getAll: () => apiCall('/students?select=id,name,nisn,gender,phone,class,class_id'),
+  getAll: () => apiCall('/students?select=*'),
   create: async (data: any) =>
     apiCall('/students', {
       method: 'POST',

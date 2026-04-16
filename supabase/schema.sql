@@ -34,9 +34,16 @@ create table if not exists public.students (
   phone text,
   class text,
   class_id uuid references public.classes(id) on update cascade on delete set null,
+  face_image text,
+  face_descriptor jsonb,
+  face_enrolled_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.students add column if not exists face_image text;
+alter table if exists public.students add column if not exists face_descriptor jsonb;
+alter table if exists public.students add column if not exists face_enrolled_at timestamptz;
 
 create index if not exists idx_students_name on public.students (name);
 create index if not exists idx_students_nisn on public.students (nisn);
@@ -60,6 +67,8 @@ create table if not exists public.tardiness_records (
   created_at timestamptz not null default now(),
   constraint tardiness_minutes_late_check check (minutes_late >= 0)
 );
+
+alter table if exists public.tardiness_records add column if not exists face_image text;
 
 create index if not exists idx_tardiness_student_id on public.tardiness_records (student_id);
 create index if not exists idx_tardiness_recorded_at on public.tardiness_records (recorded_at desc);

@@ -3,6 +3,9 @@ export interface Student {
   name: string;
   class: string;
   nisn: string;
+  faceImage?: string | null;
+  faceDescriptor?: number[] | null;
+  faceEnrolledAt?: string | null;
 }
 
 export interface LatenessRecord {

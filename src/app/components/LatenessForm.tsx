@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { safeDate, safeFormatDate, formatDurationMinutes } from '../utils/date';
+import { captureFaceDescriptor, findBestFaceMatch, loadFaceModels } from '../utils/face';
 
 export function LatenessForm() {
   const [selectedClass, setSelectedClass] = useState('');
@@ -33,6 +34,8 @@ export function LatenessForm() {
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [faceImage, setFaceImage] = useState('');
+  const [matchedStudentId, setMatchedStudentId] = useState('');
+  const [matchedStudentName, setMatchedStudentName] = useState('');
 
   const [classes, setClasses] = useState<string[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -45,6 +48,8 @@ export function LatenessForm() {
   const [filterClass, setFilterClass] = useState('all');
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const faceMatchRef = useRef<NodeJS.Timeout | null>(null);
+  const faceMatchInFlightRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -73,12 +78,42 @@ export function LatenessForm() {
     if (selectedClass) {
       const filtered = students.filter((s) => s.class === selectedClass);
       setClassStudents(filtered);
-      setSelectedStudent('');
+      setSelectedStudent((current) => (filtered.some((student) => student.id === current) ? current : ''));
     } else {
       setClassStudents([]);
       setSelectedStudent('');
     }
   }, [selectedClass, students]);
+
+  useEffect(() => {
+    if (!cameraActive || selectedStudent) {
+      if (faceMatchRef.current) {
+        clearInterval(faceMatchRef.current);
+        faceMatchRef.current = null;
+      }
+      return;
+    }
+
+    const attemptAutoMatch = async () => {
+      if (faceMatchInFlightRef.current) return;
+      faceMatchInFlightRef.current = true;
+      try {
+        await captureFace({ silent: true });
+      } finally {
+        faceMatchInFlightRef.current = false;
+      }
+    };
+
+    attemptAutoMatch();
+    faceMatchRef.current = setInterval(attemptAutoMatch, 1500);
+
+    return () => {
+      if (faceMatchRef.current) {
+        clearInterval(faceMatchRef.current);
+        faceMatchRef.current = null;
+      }
+    };
+  }, [cameraActive, selectedStudent, students]);
 
   const startRealtimeClock = () => {
     const updateTime = () => {
@@ -135,6 +170,10 @@ export function LatenessForm() {
       videoRef.current.srcObject = null;
     }
     setCameraActive(false);
+    if (faceMatchRef.current) {
+      clearInterval(faceMatchRef.current);
+      faceMatchRef.current = null;
+    }
   };
 
   const startCamera = async () => {
@@ -191,16 +230,17 @@ export function LatenessForm() {
     }
   };
 
-  const captureFace = async () => {
+  const captureFace = async (options: { silent?: boolean } = {}) => {
+    const silent = options.silent ?? false;
     if (!cameraActive) {
-      toast.error('Buka kamera terlebih dahulu');
+      if (!silent) toast.error('Buka kamera terlebih dahulu');
       return;
     }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) {
-      toast.error('Kamera belum siap');
+      if (!silent) toast.error('Kamera belum siap');
       return;
     }
 
@@ -209,8 +249,19 @@ export function LatenessForm() {
 
       const hasFace = await detectFacePresence();
       if (!hasFace) {
-        setCameraError('Wajah belum terdeteksi. Arahkan muka ke kamera lalu coba lagi.');
-        toast.error('Wajah belum terdeteksi');
+        if (!silent) {
+          setCameraError('Wajah belum terdeteksi. Arahkan muka ke kamera lalu coba lagi.');
+          toast.error('Wajah belum terdeteksi');
+        }
+        return;
+      }
+
+      const descriptor = await captureFaceDescriptor(video);
+      if (!descriptor) {
+        if (!silent) {
+          setCameraError('Wajah belum terdeteksi. Arahkan muka ke kamera lalu coba lagi.');
+          toast.error('Wajah belum terdeteksi');
+        }
         return;
       }
 
@@ -221,17 +272,33 @@ export function LatenessForm() {
 
       const context = canvas.getContext('2d');
       if (!context) {
-        toast.error('Gagal menyiapkan kanvas');
+        if (!silent) toast.error('Gagal menyiapkan kanvas');
         return;
       }
 
       context.drawImage(video, 0, 0, width, height);
       setFaceImage(canvas.toDataURL('image/jpeg', 0.9));
-      setCameraError('');
-      toast.success('Wajah berhasil dipindai');
+
+      const matchedStudent = findBestFaceMatch(descriptor, students);
+      if (matchedStudent) {
+        setSelectedClass(matchedStudent.class);
+        setSelectedStudent(matchedStudent.id);
+        setClassStudents(students.filter((s) => s.class === matchedStudent.class));
+        setMatchedStudentId(matchedStudent.id);
+        setMatchedStudentName(matchedStudent.name);
+        setCameraError('');
+        if (!silent) toast.success(`Wajah cocok: ${matchedStudent.name}`);
+      } else {
+        setMatchedStudentId('');
+        setMatchedStudentName('');
+        if (!silent) {
+          setCameraError('Wajah terdeteksi, tetapi belum cocok dengan data siswa.');
+          toast.error('Wajah belum cocok dengan data siswa');
+        }
+      }
     } catch (error) {
       console.error('Error capturing face:', error);
-      toast.error('Gagal memindai wajah');
+      if (!silent) toast.error('Gagal memindai wajah');
     } finally {
       setCameraLoading(false);
     }
@@ -240,6 +307,8 @@ export function LatenessForm() {
   const retakeFace = () => {
     setFaceImage('');
     setCameraError('');
+    setMatchedStudentId('');
+    setMatchedStudentName('');
   };
 
   const calculateMinutesLate = (date: Date) => {
@@ -271,6 +340,11 @@ export function LatenessForm() {
       return;
     }
 
+    if (cameraActive && !matchedStudentId) {
+      toast.error('Wajah belum cocok. Arahkan kamera ke siswa sampai terdeteksi otomatis.');
+      return;
+    }
+
     const student = classStudents.find((s) => s.id === selectedStudent);
     if (!student) {
       toast.error('Siswa tidak ditemukan');
@@ -293,6 +367,8 @@ export function LatenessForm() {
 
       setReason('');
       setFaceImage('');
+      setMatchedStudentId('');
+      setMatchedStudentName('');
       toast.success(`✅ Keterlambatan ${student.name} berhasil dicatat`);
     } catch (error) {
       console.error('Error saving record:', error);
@@ -362,7 +438,11 @@ export function LatenessForm() {
                 <div className="relative">
                   <select
                     value={selectedClass}
-                    onChange={(e) => setSelectedClass(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedClass(e.target.value);
+                      setMatchedStudentId('');
+                      setMatchedStudentName('');
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Pilih Kelas</option>
@@ -382,7 +462,11 @@ export function LatenessForm() {
                 <div className="relative">
                   <select
                     value={selectedStudent}
-                    onChange={(e) => setSelectedStudent(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedStudent(e.target.value);
+                      setMatchedStudentId('');
+                      setMatchedStudentName('');
+                    }}
                     disabled={!selectedClass}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
                   >
@@ -573,13 +657,19 @@ export function LatenessForm() {
                 </div>
               </div>
 
+              {cameraActive && matchedStudentName && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                  Wajah terdeteksi otomatis: <span className="font-semibold">{matchedStudentName}</span>
+                </div>
+              )}
+
               <canvas ref={canvasRef} className="hidden" />
             </div>
 
             {/* Submit */}
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || (cameraActive && !matchedStudentId)}
               className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:bg-blue-400"
             >
               {saving ? (

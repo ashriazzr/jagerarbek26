@@ -30,6 +30,20 @@ const mapConfiscationRecord = (record: any): ConfiscationRecord => ({
   notes: record.notes ?? undefined,
 });
 
+const mapStudentRecord = (student: any): Student => ({
+  id: String(student.id),
+  name: String(student.name ?? ''),
+  class: String(student.class ?? ''),
+  nisn: String(student.nisn ?? ''),
+  faceImage: student.faceImage ?? student.face_image ?? null,
+  faceDescriptor: Array.isArray(student.faceDescriptor)
+    ? student.faceDescriptor
+    : Array.isArray(student.face_descriptor)
+      ? student.face_descriptor
+      : null,
+  faceEnrolledAt: student.faceEnrolledAt ?? student.face_enrolled_at ?? null,
+});
+
 // ─── CLASSES ─────────────────────────────────────────────────────────────────
 
 export const getClasses = async (): Promise<string[]> => {
@@ -68,17 +82,17 @@ export const deleteClass = async (name: string): Promise<void> => {
 
 export const getStudents = async (): Promise<Student[]> => {
   const result = await studentsAPI.getAll();
-  return (result.data || []) as Student[];
+  return ((result.data || []) as any[]).map(mapStudentRecord);
 };
 
 export const addStudent = async (student: Omit<Student, 'id'>): Promise<Student> => {
   const result = await studentsAPI.create(student);
-  return result.data as Student;
+  return mapStudentRecord(result.data);
 };
 
 export const updateStudent = async (id: string, student: Student): Promise<Student> => {
   const result = await studentsAPI.update(id, student);
-  return result.data as Student;
+  return mapStudentRecord(result.data);
 };
 
 export const deleteStudent = async (id: string): Promise<void> => {

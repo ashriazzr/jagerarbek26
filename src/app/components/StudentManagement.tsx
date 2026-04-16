@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Users, Plus, Edit2, Trash2, X, ChevronDown, Loader2,
   Search, Upload, Download, BookOpen, GraduationCap,
+  Camera, RefreshCw, ScanFace,
 } from 'lucide-react';
 import { getStudents, addStudent, updateStudent, deleteStudent, getClasses, addClass, updateClass, deleteClass } from '../utils/storage';
 import { Student } from '../types';
 import { toast } from 'sonner';
+import { captureFaceDescriptor, loadFaceModels } from '../utils/face';
 
 export function StudentManagement() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -29,9 +31,24 @@ export function StudentManagement() {
   const [savingClass, setSavingClass] = useState(false);
 
   const [formData, setFormData] = useState({ name: '', class: '', nisn: '' });
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [faceImage, setFaceImage] = useState('');
+  const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     loadAll();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopFaceCamera();
+    };
   }, []);
 
   const loadAll = async () => {
@@ -51,6 +68,94 @@ export function StudentManagement() {
   const loadStudents = async () => {
     const all = await getStudents();
     setStudents(all.sort((a, b) => a.class.localeCompare(b.class) || a.name.localeCompare(b.name)));
+  };
+
+  const stopFaceCamera = () => {
+    const stream = streamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  const startFaceCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Browser tidak mendukung kamera');
+      return;
+    }
+
+    try {
+      setCameraLoading(true);
+      setCameraError('');
+      stopFaceCamera();
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      streamRef.current = stream;
+      setCameraActive(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+    } catch (error) {
+      console.error('Error opening camera:', error);
+      setCameraError('Tidak dapat mengakses kamera. Pastikan izin kamera aktif.');
+      toast.error('Gagal membuka kamera');
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const captureStudentFace = async () => {
+    if (!cameraActive) {
+      toast.error('Buka kamera terlebih dahulu');
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    try {
+      setCameraLoading(true);
+      await loadFaceModels();
+      const descriptor = await captureFaceDescriptor(video);
+      if (!descriptor) {
+        setCameraError('Wajah tidak terdeteksi. Arahkan muka ke kamera dan coba lagi.');
+        toast.error('Wajah tidak terdeteksi');
+        return;
+      }
+
+      const width = video.videoWidth || 640;
+      const height = video.videoHeight || 480;
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, width, height);
+      }
+
+      setFaceImage(canvas.toDataURL('image/jpeg', 0.9));
+      setFaceDescriptor(descriptor);
+      setCameraError('');
+      toast.success('Wajah siswa berhasil didaftarkan');
+    } catch (error) {
+      console.error('Error capturing face:', error);
+      toast.error('Gagal mendaftarkan wajah');
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const resetStudentFace = () => {
+    setFaceImage('');
+    setFaceDescriptor(null);
+    setCameraError('');
   };
 
   // ─── CLASS MANAGEMENT ────────────────────────────────────────────────────────
@@ -123,9 +228,13 @@ export function StudentManagement() {
     if (student) {
       setEditingStudent(student);
       setFormData({ name: student.name, class: student.class, nisn: student.nisn });
+      setFaceImage(student.faceImage || '');
+      setFaceDescriptor(student.faceDescriptor || null);
     } else {
       setEditingStudent(null);
       setFormData({ name: '', class: classes[0] || '', nisn: '' });
+      setFaceImage('');
+      setFaceDescriptor(null);
     }
     setIsStudentModalOpen(true);
   };
@@ -134,6 +243,10 @@ export function StudentManagement() {
     setIsStudentModalOpen(false);
     setEditingStudent(null);
     setFormData({ name: '', class: '', nisn: '' });
+    setFaceImage('');
+    setFaceDescriptor(null);
+    setCameraError('');
+    stopFaceCamera();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,6 +263,9 @@ export function StudentManagement() {
           name: formData.name.trim(),
           class: formData.class,
           nisn: formData.nisn.trim(),
+          faceImage: faceImage || null,
+          faceDescriptor: faceDescriptor,
+          faceEnrolledAt: faceDescriptor ? new Date().toISOString() : editingStudent.faceEnrolledAt || null,
         };
         await updateStudent(editingStudent.id, updated);
         toast.success('Data siswa berhasil diperbarui');
@@ -158,6 +274,9 @@ export function StudentManagement() {
           name: formData.name.trim(),
           class: formData.class,
           nisn: formData.nisn.trim(),
+          faceImage: faceImage || null,
+          faceDescriptor: faceDescriptor,
+          faceEnrolledAt: faceDescriptor ? new Date().toISOString() : null,
         });
         toast.success('Siswa baru berhasil ditambahkan');
       }
@@ -556,6 +675,88 @@ export function StudentManagement() {
                   placeholder="Contoh: 0012345678"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Daftar Wajah Siswa</label>
+                  <p className="text-xs text-gray-500 mt-1">Data ini dipakai untuk pencocokan otomatis dari kamera saat absensi.</p>
+                </div>
+
+                {cameraError && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                    {cameraError}
+                  </div>
+                )}
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="overflow-hidden rounded-xl bg-black aspect-video relative">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`h-full w-full object-cover ${cameraActive ? 'opacity-100' : 'opacity-40'}`}
+                    />
+                    {!cameraActive && (
+                      <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80 px-4 text-center">
+                        Buka kamera lalu arahkan wajah siswa ke layar.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 flex flex-col justify-between gap-3 min-h-[240px]">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800 mb-1">Hasil enrollment</p>
+                      <p className="text-xs text-gray-500">Satu foto wajah dan descriptor akan disimpan untuk matching.</p>
+                    </div>
+
+                    {faceImage ? (
+                      <div className="space-y-3">
+                        <img src={faceImage} alt="Wajah siswa" className="w-full rounded-xl border border-gray-200 object-cover" />
+                        <button
+                          type="button"
+                          onClick={resetStudentFace}
+                          className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Hapus hasil scan
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-50 border border-gray-100 text-center px-6 py-10">
+                        <div>
+                          <ScanFace className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                          <p className="text-sm font-medium text-gray-700">Belum ada data wajah</p>
+                          <p className="text-xs text-gray-500 mt-1">Klik scan untuk menyimpan wajah siswa.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={cameraActive ? stopFaceCamera : startFaceCamera}
+                    disabled={cameraLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    <Camera className="w-4 h-4" />
+                    {cameraActive ? 'Tutup Kamera' : 'Buka Kamera'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={captureStudentFace}
+                    disabled={!cameraActive || cameraLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed"
+                  >
+                    {cameraLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanFace className="w-4 h-4" />}
+                    Scan Wajah Siswa
+                  </button>
+                </div>
+
+                <canvas ref={canvasRef} className="hidden" />
               </div>
 
               <div className="flex gap-3 pt-2">
