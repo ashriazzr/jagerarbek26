@@ -13,7 +13,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { getLatenessRecords, getConfiscationRecords, getStudents } from '../utils/storage';
-import { seedAPI } from '../utils/api';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -38,12 +37,6 @@ export function Dashboard() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // Try to seed sample data on first load (no-op if data exists)
-      try {
-        await seedAPI.seed();
-      } catch (_) {
-        // Seed failure is non-fatal; ignore
-      }
       const [students, latenessRecords, confiscationRecords] = await Promise.all([
         getStudents(),
         getLatenessRecords(),

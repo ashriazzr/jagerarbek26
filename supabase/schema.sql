@@ -83,6 +83,7 @@ create table if not exists public.confiscation_records (
   student_name text not null,
   student_class text not null,
   item text not null,
+  item_image text,
   confiscation_date date not null,
   pickup_date date,
   status text not null default 'disita',
@@ -94,6 +95,8 @@ create table if not exists public.confiscation_records (
     pickup_date is null or pickup_date >= confiscation_date
   )
 );
+
+alter table if exists public.confiscation_records add column if not exists item_image text;
 
 create index if not exists idx_confiscation_student_id on public.confiscation_records (student_id);
 create index if not exists idx_confiscation_date on public.confiscation_records (confiscation_date desc);

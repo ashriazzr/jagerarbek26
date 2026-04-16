@@ -30,7 +30,7 @@ export function StudentManagement() {
   const [newClassName, setNewClassName] = useState('');
   const [savingClass, setSavingClass] = useState(false);
 
-  const [formData, setFormData] = useState({ name: '', class: '', nisn: '' });
+  const [formData, setFormData] = useState({ name: '', class: '', nisn: '', gender: '' });
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -40,6 +40,8 @@ export function StudentManagement() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const isMobileDevice = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -95,7 +97,19 @@ export function StudentManagement() {
       setCameraError('');
       stopFaceCamera();
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      const preferredFacingMode = isMobileDevice() ? 'environment' : 'user';
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: preferredFacingMode } },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false,
+        });
+      }
       streamRef.current = stream;
       setCameraActive(true);
 
@@ -293,12 +307,17 @@ export function StudentManagement() {
   const handleOpenModal = (student?: Student) => {
     if (student) {
       setEditingStudent(student);
-      setFormData({ name: student.name, class: student.class, nisn: student.nisn });
+      setFormData({
+        name: student.name,
+        class: student.class,
+        nisn: student.nisn,
+        gender: student.gender || '',
+      });
       setFaceImage(student.faceImage || '');
       setFaceDescriptor(student.faceDescriptor || null);
     } else {
       setEditingStudent(null);
-      setFormData({ name: '', class: classes[0] || '', nisn: '' });
+      setFormData({ name: '', class: classes[0] || '', nisn: '', gender: '' });
       setFaceImage('');
       setFaceDescriptor(null);
     }
@@ -308,7 +327,7 @@ export function StudentManagement() {
   const handleCloseModal = () => {
     setIsStudentModalOpen(false);
     setEditingStudent(null);
-    setFormData({ name: '', class: '', nisn: '' });
+    setFormData({ name: '', class: '', nisn: '', gender: '' });
     setFaceImage('');
     setFaceDescriptor(null);
     setCameraError('');
@@ -329,6 +348,7 @@ export function StudentManagement() {
           name: formData.name.trim(),
           class: formData.class,
           nisn: formData.nisn.trim(),
+          gender: formData.gender || null,
           faceImage: faceImage || null,
           faceDescriptor: faceDescriptor,
           faceEnrolledAt: faceDescriptor ? new Date().toISOString() : editingStudent.faceEnrolledAt || null,
@@ -340,6 +360,7 @@ export function StudentManagement() {
           name: formData.name.trim(),
           class: formData.class,
           nisn: formData.nisn.trim(),
+          gender: formData.gender || null,
           faceImage: faceImage || null,
           faceDescriptor: faceDescriptor,
           faceEnrolledAt: faceDescriptor ? new Date().toISOString() : null,
@@ -403,8 +424,8 @@ export function StudentManagement() {
 
   const handleExport = () => {
     const rows = [
-      ['NISN', 'Nama', 'Kelas'],
-      ...students.map(s => [s.nisn, s.name, s.class]),
+      ['NISN', 'Nama', 'Kelas', 'Jenis Kelamin'],
+      ...students.map(s => [s.nisn, s.name, s.class, s.gender || '']),
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -578,6 +599,7 @@ export function StudentManagement() {
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">NISN</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Nama Siswa</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kelas</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Jenis Kelamin</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Aksi</th>
               </tr>
             </thead>
@@ -594,6 +616,15 @@ export function StudentManagement() {
                       <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full">
                         {student.class}
                       </span>
+                    </td>
+                    <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {student.gender ? (
+                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full">
+                          {student.gender}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 italic">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
@@ -620,7 +651,7 @@ export function StudentManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-5 py-14 text-center text-gray-400">
+                  <td colSpan={6} className="px-5 py-14 text-center text-gray-400">
                     <Users className="w-10 h-10 mx-auto mb-3 text-gray-200" />
                     <p>{searchQuery ? 'Tidak ada siswa yang cocok dengan pencarian' : 'Belum ada data siswa'}</p>
                   </td>
@@ -742,6 +773,25 @@ export function StudentManagement() {
                   placeholder="Contoh: 0012345678"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* Jenis Kelamin */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Jenis Kelamin <span className="text-gray-400 font-normal text-xs">(opsional)</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={formData.gender}
+                    onChange={e => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Pilih Jenis Kelamin</option>
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">

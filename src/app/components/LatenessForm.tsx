@@ -54,6 +54,8 @@ export function LatenessForm() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const isMobileDevice = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
   const reasonOptions = [
     'Bangun kesiangan',
     'Kemacetan lalu lintas',
@@ -187,10 +189,19 @@ export function LatenessForm() {
       setCameraError('');
       stopCamera();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false,
-      });
+      const preferredFacingMode = isMobileDevice() ? 'environment' : 'user';
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: preferredFacingMode } },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false,
+        });
+      }
 
       streamRef.current = stream;
       setCameraActive(true);

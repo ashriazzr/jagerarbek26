@@ -167,7 +167,7 @@ export const tardinessAPI = {
 
 // Confiscation API
 export const confiscationAPI = {
-  getAll: () => apiCall('/confiscation_records?select=id,student_id,student_name,student_class,item,confiscation_date,pickup_date,status,notes'),
+  getAll: () => apiCall('/confiscation_records?select=id,student_id,student_name,student_class,item,item_image,confiscation_date,pickup_date,status,notes'),
   create: (data: any) =>
     apiCall('/confiscation_records', {
       method: 'POST',
@@ -180,6 +180,9 @@ export const confiscationAPI = {
         pickup_date: data.pickupDate || data.pickup_date || null,
         status: data.status || 'disita',
         notes: data.notes || null,
+        ...(Object.prototype.hasOwnProperty.call(data, 'itemImage') || Object.prototype.hasOwnProperty.call(data, 'item_image')
+          ? { item_image: data.itemImage || data.item_image || null }
+          : {}),
       }),
     }),
   update: (id: string, data: any) =>
@@ -194,6 +197,9 @@ export const confiscationAPI = {
         pickup_date: data.pickupDate || data.pickup_date || null,
         status: data.status || 'disita',
         notes: data.notes || null,
+        ...(Object.prototype.hasOwnProperty.call(data, 'itemImage') || Object.prototype.hasOwnProperty.call(data, 'item_image')
+          ? { item_image: data.itemImage || data.item_image || null }
+          : {}),
       }),
     }),
   delete: (id: string) =>

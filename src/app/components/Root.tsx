@@ -11,25 +11,10 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { seedAPI } from '../utils/api';
 
 export function Root() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [seeded, setSeeded] = useState(false);
-
-  // Seed sample data on first load
-  useEffect(() => {
-    const doSeed = async () => {
-      try {
-        await seedAPI.seed();
-        setSeeded(true);
-      } catch (e) {
-        console.log('Seed error:', e);
-      }
-    };
-    if (!seeded) doSeed();
-  }, [seeded]);
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },

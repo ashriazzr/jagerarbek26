@@ -24,6 +24,7 @@ const mapConfiscationRecord = (record: any): ConfiscationRecord => ({
   studentName: String(record.studentName ?? record.student_name ?? ''),
   studentClass: String(record.studentClass ?? record.student_class ?? ''),
   item: String(record.item ?? ''),
+  itemImage: record.itemImage ?? record.item_image ?? null,
   confiscationDate: toValidDateString(record.confiscationDate ?? record.confiscation_date, new Date().toISOString()),
   pickupDate: record.pickupDate ?? record.pickup_date ?? null,
   status: record.status === 'dikembalikan' || record.status === 'Dikembalikan' ? 'dikembalikan' : 'disita',
@@ -35,6 +36,7 @@ const mapStudentRecord = (student: any): Student => ({
   name: String(student.name ?? ''),
   class: String(student.class ?? ''),
   nisn: String(student.nisn ?? ''),
+  gender: student.gender ? String(student.gender) : null,
   faceImage: student.faceImage ?? student.face_image ?? null,
   faceDescriptor: Array.isArray(student.faceDescriptor)
     ? student.faceDescriptor
@@ -164,13 +166,33 @@ export const getConfiscationRecords = async (): Promise<ConfiscationRecord[]> =>
 };
 
 export const addConfiscationRecord = async (record: Omit<ConfiscationRecord, 'id'>): Promise<ConfiscationRecord> => {
-  const result = await confiscationAPI.create(record);
-  return mapConfiscationRecord(result.data);
+  try {
+    const result = await confiscationAPI.create(record);
+    return mapConfiscationRecord(result.data);
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if (record.itemImage && /item_image|column .* does not exist|invalid input syntax/i.test(message)) {
+      const { itemImage, ...fallbackRecord } = record as any;
+      const result = await confiscationAPI.create(fallbackRecord);
+      return mapConfiscationRecord(result.data);
+    }
+    throw error;
+  }
 };
 
 export const updateConfiscationRecord = async (id: string, record: ConfiscationRecord): Promise<ConfiscationRecord> => {
-  const result = await confiscationAPI.update(id, record);
-  return mapConfiscationRecord(result.data);
+  try {
+    const result = await confiscationAPI.update(id, record);
+    return mapConfiscationRecord(result.data);
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if (record.itemImage && /item_image|column .* does not exist|invalid input syntax/i.test(message)) {
+      const { itemImage, ...fallbackRecord } = record as any;
+      const result = await confiscationAPI.update(id, fallbackRecord);
+      return mapConfiscationRecord(result.data);
+    }
+    throw error;
+  }
 };
 
 export const deleteConfiscationRecord = async (id: string): Promise<void> => {

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ShieldAlert, Save, Trash2, Check, ChevronDown, Loader2, AlertCircle, Package } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ShieldAlert, Save, Trash2, Check, ChevronDown, Loader2, AlertCircle, Package, Camera, RefreshCw } from 'lucide-react';
 import {
   getStudents,
   getConfiscationRecords,
@@ -21,6 +21,10 @@ export function ConfiscationForm() {
   const [confiscationDate, setConfiscationDate] = useState('');
   const [plannedPickupDate, setPlannedPickupDate] = useState(() => format(addDays(new Date(), 3), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
+  const [itemImage, setItemImage] = useState('');
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState('');
 
   const [classes, setClasses] = useState<string[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -33,6 +37,10 @@ export function ConfiscationForm() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [returning, setReturning] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const itemOptions = [
     'Handphone / HP',
@@ -50,7 +58,12 @@ export function ConfiscationForm() {
     const now = new Date();
     setConfiscationDate(format(now, 'yyyy-MM-dd'));
     setPlannedPickupDate(format(addDays(now, 3), 'yyyy-MM-dd'));
+    return () => {
+      stopCamera();
+    };
   }, []);
+
+  const isMobileDevice = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
   useEffect(() => {
     if (selectedClass) {
@@ -97,6 +110,90 @@ export function ConfiscationForm() {
     }
   };
 
+  const stopCamera = () => {
+    const stream = streamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Browser tidak mendukung akses kamera');
+      return;
+    }
+
+    try {
+      setCameraLoading(true);
+      setCameraError('');
+      stopCamera();
+
+      const preferredFacingMode = isMobileDevice() ? 'environment' : 'user';
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: preferredFacingMode } },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false,
+        });
+      }
+
+      streamRef.current = stream;
+      setCameraActive(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+    } catch (error) {
+      console.error('Error starting camera:', error);
+      setCameraError('Tidak bisa mengakses kamera. Pastikan izin kamera diaktifkan.');
+      toast.error('Gagal membuka kamera');
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const captureItemImage = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) {
+      toast.error('Kamera belum siap');
+      return;
+    }
+
+    const width = video.videoWidth || 640;
+    const height = video.videoHeight || 480;
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      toast.error('Gagal menyiapkan kanvas');
+      return;
+    }
+
+    context.drawImage(video, 0, 0, width, height);
+    setItemImage(canvas.toDataURL('image/jpeg', 0.9));
+    setCameraError('');
+    toast.success('Foto barang berhasil diambil');
+  };
+
+  const retakeItemImage = () => {
+    setItemImage('');
+    setCameraError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClass || !selectedStudent || !item.trim() || !confiscationDate) {
@@ -117,6 +214,7 @@ export function ConfiscationForm() {
         studentName: student.name,
         studentClass: student.class,
         item: item.trim(),
+        itemImage: itemImage || null,
         confiscationDate,
         pickupDate: plannedPickupDate || null,
         status: 'disita',
@@ -127,6 +225,7 @@ export function ConfiscationForm() {
 
       setItem('');
       setNotes('');
+      setItemImage('');
       setPlannedPickupDate(format(addDays(new Date(), 3), 'yyyy-MM-dd'));
       const now = new Date();
       setConfiscationDate(format(now, 'yyyy-MM-dd'));
@@ -341,6 +440,100 @@ export function ConfiscationForm() {
               />
             </div>
 
+            {/* Item photo */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Foto Barang Sitaan <span className="text-gray-400 font-normal">(opsional)</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ambil foto barang sebagai bukti dokumentasi razia.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={cameraActive ? stopCamera : startCamera}
+                    disabled={cameraLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    <Camera className="w-4 h-4" />
+                    {cameraActive ? 'Tutup Kamera' : 'Buka Kamera'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={captureItemImage}
+                    disabled={!cameraActive || cameraLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
+                  >
+                    {cameraLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                    Ambil Foto
+                  </button>
+                </div>
+              </div>
+
+              {cameraError && (
+                <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  {cameraError}
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="overflow-hidden rounded-xl bg-black aspect-video relative">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`h-full w-full object-cover ${cameraActive ? 'opacity-100' : 'opacity-40'}`}
+                  />
+                  {!cameraActive && (
+                    <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80 px-4 text-center">
+                      Kamera belum aktif. Buka kamera untuk foto barang.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 min-h-[220px] flex flex-col justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 mb-1">Preview Foto Barang</p>
+                    <p className="text-xs text-gray-500">
+                      Foto ini akan tersimpan bersama data razia.
+                    </p>
+                  </div>
+
+                  {itemImage ? (
+                    <div className="space-y-3">
+                      <img
+                        src={itemImage}
+                        alt="Foto barang sitaan"
+                        className="w-full rounded-xl border border-gray-200 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={retakeItemImage}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Ambil ulang
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-50 border border-gray-100 text-center px-6 py-8">
+                      <div>
+                        <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-gray-700">Belum ada foto barang</p>
+                        <p className="text-xs text-gray-500 mt-1">Klik Ambil Foto setelah kamera aktif.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+
             {/* Submit */}
             <button
               type="submit"
@@ -435,6 +628,13 @@ export function ConfiscationForm() {
                         <Package className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         <span className="font-medium">{record.item}</span>
                       </div>
+                      {record.itemImage && (
+                        <img
+                          src={record.itemImage}
+                          alt={`Barang sitaan ${record.item}`}
+                          className="mt-2 h-14 w-14 rounded-lg object-cover border border-gray-200"
+                        />
+                      )}
                       {record.notes && (
                         <p className="text-xs text-gray-400 mt-0.5 italic">{record.notes}</p>
                       )}
