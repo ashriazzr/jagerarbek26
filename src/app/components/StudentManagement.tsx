@@ -397,14 +397,30 @@ export function StudentManagement() {
   const handleBulkImport = async () => {
     const lines = bulkText.trim().split('\n').filter(l => l.trim());
     if (lines.length === 0) { toast.error('Format tidak valid'); return; }
+
+    const normalizeGender = (value?: string) => {
+      if (!value) return null;
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) return null;
+      if (['l', 'lk', 'laki', 'laki-laki', 'pria', 'male'].includes(normalized)) return 'Laki-laki';
+      if (['p', 'pr', 'perempuan', 'wanita', 'female'].includes(normalized)) return 'Perempuan';
+      return null;
+    };
+
     try {
       setSaving(true);
       let count = 0;
       for (const line of lines) {
         const parts = line.split(',').map(p => p.trim());
-        if (parts.length >= 2) {
+        if (parts.length >= 3) {
           const studentClass = parts[2]?.toUpperCase() || '';
-          await addStudent({ nisn: parts[0], name: parts[1], class: studentClass });
+          const gender = normalizeGender(parts[3]);
+          await addStudent({
+            nisn: parts[0],
+            name: parts[1],
+            class: studentClass,
+            gender,
+          });
           count++;
         }
       }
@@ -929,14 +945,14 @@ export function StudentManagement() {
             <div className="p-6 space-y-4">
               <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">
                 <p className="font-semibold mb-1">Format per baris:</p>
-                <code className="bg-blue-100 px-2 py-0.5 rounded text-xs">NISN,Nama Lengkap,Kelas</code>
+                <code className="bg-blue-100 px-2 py-0.5 rounded text-xs">NISN,Nama Lengkap,Kelas,Jenis Kelamin</code>
                 <p className="mt-2 text-blue-600">Contoh:</p>
                 <pre className="text-xs mt-1 text-blue-600">
-{`0012345601,Ahmad Rizki,X-1
-,Siti Nurhaliza,X-1
-0012345603,Budi Santoso,XI-IPA-1`}
+{`0012345601,Ahmad Rizki,X-1,Laki-laki
+,Siti Nurhaliza,X-1,Perempuan
+0012345603,Budi Santoso,XI-IPA-1,L`}
                 </pre>
-                <p className="text-xs mt-2 text-blue-500">*NISN boleh dikosongkan (tetap isi koma)</p>
+                <p className="text-xs mt-2 text-blue-500">*NISN dan Jenis Kelamin boleh dikosongkan (tetap isi koma)</p>
               </div>
               <textarea
                 value={bulkText}
