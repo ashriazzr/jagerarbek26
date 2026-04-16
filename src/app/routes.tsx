@@ -8,7 +8,16 @@ import { StudentManagement } from "./components/StudentManagement";
 import { GithubTutorial } from "./components/GithubTutorial";
 import { NotFound } from "./components/NotFound";
 
-export const router = createBrowserRouter([
+// Get the base path for GitHub Pages
+const getBasename = () => {
+  // Check if running on GitHub Pages
+  if (window.location.hostname === 'ashriazzr.github.io') {
+    return '/jagerarbek26/';
+  }
+  return '/';
+};
+
+const routes = [
   {
     path: "/",
     Component: Root,
@@ -23,4 +32,8 @@ export const router = createBrowserRouter([
       { path: "*", Component: NotFound },
     ],
   },
-]);
+];
+
+export const router = createBrowserRouter(routes, {
+  basename: getBasename(),
+});

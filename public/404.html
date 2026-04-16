@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting...</title>
+    <script>
+      // Redirect logic untuk SPA routing di GitHub Pages
+      const path = decodeURI(window.location.pathname);
+      
+      // Jika path dimulai dengan /jagerarbek26/, extract path tanpa base
+      // dan redirect ke index.html dengan query parameter
+      if (path !== '/' && !path.match(/\.[a-z0-9]+$/i)) {
+        // Simpan path asli di sessionStorage
+        window.sessionStorage.redirect = path;
+        // Redirect ke root untuk load index.html
+        window.location.href = '/jagerarbek26/';
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Fallback untuk browser yang menonaktifkan JavaScript -->
+    <p>Redirecting...</p>
+  </body>
+</html>
